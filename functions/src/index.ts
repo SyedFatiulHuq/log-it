@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase-admin/app";
 import { Timestamp, getFirestore } from "firebase-admin/firestore";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { setGlobalOptions } from "firebase-functions/v2";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import {
   liftingRows, sessionRow, swimmingRows, weightRow, type SessionDoc, type WeightDoc,
@@ -10,6 +11,8 @@ import {
 } from "./sheets";
 
 initializeApp();
+// Same region as the Firestore database (us-west2) so triggers can be created.
+setGlobalOptions({ region: "us-west2" });
 const db = getFirestore();
 
 // Single-user allowlist; keep in sync with firestore.rules and src/firebase-config.ts.

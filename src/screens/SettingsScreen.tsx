@@ -91,7 +91,7 @@ export function SettingsScreen() {
     setRebuilding(true);
     setSheetMsg(null);
     try {
-      const fn = httpsCallable<unknown, { rows: number }>(getFunctions(app), "rebuildSheet");
+      const fn = httpsCallable<unknown, { rows: number }>(getFunctions(app, "us-west2"), "rebuildSheet");
       const res = await fn();
       setSheetMsg(`Sheet rebuilt: ${res.data.rows} rows written.`);
     } catch (e) {
