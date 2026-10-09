@@ -7,7 +7,7 @@ import { localDateString, minutesBetween, slugify } from "../calc/dates";
 import {
   exerciseDoc, locationDoc, sessionDoc, sessionsCol, userDoc, weightDoc, weightsCol,
 } from "./refs";
-import type { Entry, Equipment, Rating, Session, Settings, Unit } from "./types";
+import type { Entry, Equipment, LiftEntry, Rating, Session, Settings, SwimEntry, Unit } from "./types";
 
 const now = () => Timestamp.fromDate(new Date());
 const newId = () => crypto.randomUUID();
@@ -149,10 +149,10 @@ export function deleteSession(uid: string, id: string) {
 // ---- entries -------------------------------------------------------------
 
 /** Adds a new entry or replaces one with the same id. Kcal are filled in by updateSession. */
-export function upsertEntry(
-  uid: string, id: string, current: Session, entry: Omit<Entry, "id" | "kcalGross" | "kcalNet"> & { id?: string },
-  settings: Settings,
-) {
+type Draft<T> = Omit<T, "id" | "kcalGross" | "kcalNet"> & { id?: string };
+export type NewEntry = Draft<LiftEntry> | Draft<SwimEntry>;
+
+export function upsertEntry(uid: string, id: string, current: Session, entry: NewEntry, settings: Settings) {
   const full = { kcalGross: 0, kcalNet: 0, ...entry, id: entry.id ?? newId() } as Entry;
   const exists = current.entries.some((e) => e.id === full.id);
   const entries = exists ? current.entries.map((e) => (e.id === full.id ? full : e)) : [...current.entries, full];
@@ -200,4 +200,39 @@ export async function saveExercisePreference(
 
 export function deleteExercise(uid: string, name: string) {
   return deleteDoc(exerciseDoc(uid, slugify(name)));
+}
+
+export async function previousWeight(uid: string, beforeDate: string) {
+  const snap = await getDocs(
+    query(weightsCol(uid), where("date", "<", beforeDate), orderBy("date", "desc"), limit(1)),
+  );
+  return (snap.docs[0]?.data() as { date: string; weight: number; unit: Unit } | undefined) ?? null;
+}
+
+export function renameLocation(uid: string, id: string, name: string) {
+  return updateDoc(locationDoc(uid, id), { name: name.trim() });
+}
+
+export async function createCustomExercise(uid: string, name: string, group: "arms" | "upper" | "legs") {
+  const ref = exerciseDoc(uid, slugify(name));
+  await setDoc(
+    ref,
+    {
+      name: name.trim(), group, builtIn: false, lastEquipment: "machine", lastCount: 1,
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+/** Rename and/or regroup a custom exercise (a rename moves the document, since the id is a slug). */
+export async function updateCustomExercise(
+  uid: string, oldName: string, next: { name: string; group: "arms" | "upper" | "legs" },
+) {
+  const oldRef = exerciseDoc(uid, slugify(oldName));
+  const newRef = exerciseDoc(uid, slugify(next.name));
+  const snap = await getDoc(oldRef);
+  const base = snap.exists() ? snap.data() : {};
+  await setDoc(newRef, { ...base, name: next.name.trim(), group: next.group, updatedAt: serverTimestamp() });
+  if (newRef.path !== oldRef.path) await deleteDoc(oldRef);
 }

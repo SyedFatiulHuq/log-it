@@ -105,6 +105,15 @@ export function useActiveSession(): Live<(Session & { id: string }) | null> {
   return { ...live, data: live.data[0] ?? null };
 }
 
+/** Most recent sessions by date, newest first. */
+export function useRecentSessions(n: number) {
+  const uid = useUid();
+  return useQuerySnapshot<Session>(
+    () => query(sessionsCol(uid), orderBy("date", "desc"), limit(n)),
+    `${uid}/recent/${n}`,
+  );
+}
+
 /** Sessions with `date` in [from, to] (inclusive "YYYY-MM-DD"), oldest first. */
 export function useSessions(from: string, to: string) {
   const uid = useUid();

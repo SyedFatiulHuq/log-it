@@ -5,6 +5,8 @@ import { SessionScreen } from "./screens/SessionScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { ExportScreen } from "./screens/ExportScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { SessionDetailScreen } from "./screens/SessionDetailScreen";
+import { useOnline, useRecentSessions } from "./data/hooks";
 
 function SignIn() {
   const { signIn, denied } = useAuth();
@@ -28,16 +30,25 @@ function SignIn() {
   );
 }
 
-export default function App() {
-  const { user, loading } = useAuth();
-  if (loading) return <main className="page center muted">Loading…</main>;
-  if (!user) return <SignIn />;
+function SyncStatus() {
+  const online = useOnline();
+  const { pending } = useRecentSessions(1);
+  if (online && !pending) return null;
+  return (
+    <div className="syncbar" role="status">
+      {online ? "Saving…" : "Offline — changes will sync"}
+    </div>
+  );
+}
 
+function Shell() {
   return (
     <div className="shell">
+      <SyncStatus />
       <div className="page">
         <Routes>
           <Route path="/" element={<SessionScreen />} />
+          <Route path="/session/:id" element={<SessionDetailScreen />} />
           <Route path="/calendar" element={<CalendarScreen />} />
           <Route path="/export" element={<ExportScreen />} />
           <Route path="/settings" element={<SettingsScreen />} />
@@ -52,4 +63,11 @@ export default function App() {
       </nav>
     </div>
   );
+}
+
+export default function App() {
+  const { user, loading } = useAuth();
+  if (loading) return <main className="page center muted">Loading…</main>;
+  if (!user) return <SignIn />;
+  return <Shell />;
 }
