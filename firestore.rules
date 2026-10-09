@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function isOwner(uid) {
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email == "fsyedhuq@uci.edu"
+        && request.auth.token.email_verified == true;
+    }
+
+    // Sessions: owner only, and clients may never create or change `sheetSync`
+    // (only the Cloud Function, via admin privileges, writes it).
+    match /users/{uid}/sessions/{sessionId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && !('sheetSync' in request.resource.data);
+      allow update: if isOwner(uid)
+        && request.resource.data.get('sheetSync', null) == resource.data.get('sheetSync', null);
+      allow delete: if isOwner(uid);
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /users/{uid}/{collection}/{docId} {
+      allow read, write: if isOwner(uid) && collection != 'sessions';
+    }
+  }
+}
