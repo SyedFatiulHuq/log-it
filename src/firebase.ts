@@ -13,5 +13,6 @@ export const googleProvider = new GoogleAuthProvider();
 
 // Persistent local cache so the app works offline at the gym and syncs later.
 export const db = initializeFirestore(app, {
+  ignoreUndefinedProperties: true,
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
